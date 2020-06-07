@@ -1,10 +1,10 @@
 FROM golang:alpine as builder
-RUN mkdir /build 
+RUN mkdir /build
 ADD . /build/
 WORKDIR /build 
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags '-extldflags "-static"' -o main .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o main .
 
-FROM scratch
+FROM gcr.io/distroless/static
 COPY --from=builder /build/main /app/
 WORKDIR /app
 CMD ["./main"]
