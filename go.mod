@@ -1,4 +1,4 @@
-module github.com/jyggen/tautulli-metrics
+module github.com/jyggen/plex-collector
 
 go 1.14
 
