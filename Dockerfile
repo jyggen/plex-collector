@@ -8,3 +8,4 @@ FROM gcr.io/distroless/static
 COPY --from=builder /build/main /app/
 WORKDIR /app
 CMD ["./main"]
+EXPOSE 9090
