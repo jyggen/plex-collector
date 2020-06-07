@@ -113,7 +113,7 @@ func (c *Collector) Collect() error {
 
 		if _, ok := oldMediaItemsMap[mediaItem.id]; !ok {
 			added++
-			mediaItemsTotal.With(prometheus.Labels{
+			mediaItemsCount.With(prometheus.Labels{
 				"audio_channels":   strconv.Itoa(mediaItem.audioChannels),
 				"audio_codec":      mediaItem.audioCodec,
 				"media_type":       mediaItem.mediaType,
@@ -124,7 +124,7 @@ func (c *Collector) Collect() error {
 		}
 
 		if mediaItem.Diff(oldMediaItemsMap[mediaItem.id]) {
-			mediaItemsTotal.With(prometheus.Labels{
+			mediaItemsCount.With(prometheus.Labels{
 				"audio_channels":   strconv.Itoa(oldMediaItemsMap[mediaItem.id].audioChannels),
 				"audio_codec":      oldMediaItemsMap[mediaItem.id].audioCodec,
 				"media_type":       oldMediaItemsMap[mediaItem.id].mediaType,
@@ -132,7 +132,7 @@ func (c *Collector) Collect() error {
 				"video_resolution": oldMediaItemsMap[mediaItem.id].videoResolution,
 			}).Dec()
 
-			mediaItemsTotal.With(prometheus.Labels{
+			mediaItemsCount.With(prometheus.Labels{
 				"audio_channels":   strconv.Itoa(mediaItem.audioChannels),
 				"audio_codec":      mediaItem.audioCodec,
 				"media_type":       mediaItem.mediaType,
@@ -152,7 +152,7 @@ func (c *Collector) Collect() error {
 			continue
 		}
 
-		mediaItemsTotal.With(prometheus.Labels{
+		mediaItemsCount.With(prometheus.Labels{
 			"audio_channels":   strconv.Itoa(mediaItem.audioChannels),
 			"audio_codec":      mediaItem.audioCodec,
 			"media_type":       mediaItem.mediaType,
@@ -239,13 +239,13 @@ func (c *Collector) analyzeItem(item plex.Metadata, container plex.MediaContaine
 
 var mediaCollection = make(map[int]*MediaItem, 0)
 var labels = []string{"audio_channels", "audio_codec", "media_type", "video_codec", "video_resolution"}
-var mediaItemsTotal = promauto.NewGaugeVec(prometheus.GaugeOpts{
-	Name: "plex_media_items_total",
-	Help: "The total number of media items",
+var mediaItemsCount = promauto.NewGaugeVec(prometheus.GaugeOpts{
+	Name: "plex_media_items_count_total",
+	Help: "The total count of media items.",
 }, labels)
-var mediaBytesTotal = promauto.NewGaugeVec(prometheus.GaugeOpts{
-	Name: "plex_media_bytes_total",
-	Help: "The total size of media items",
+var mediaItemsBytes = promauto.NewGaugeVec(prometheus.GaugeOpts{
+	Name: "plex_media_items_bytes_total",
+	Help: "The total bytes size of media items.",
 }, labels)
 
 func bootstrap(c *cli.Context) error {
