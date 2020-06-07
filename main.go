@@ -32,6 +32,7 @@ type MediaItem struct {
 	mediaType            string
 	parentRatingKey      string
 	sectionKey           string
+	size                 int
 	videoCodec           string
 	videoResolution      string
 }
@@ -54,6 +55,16 @@ func (m *MediaItem) Diff(x *MediaItem) bool {
 	}
 
 	return false
+}
+
+func (m *MediaItem) Gauge(gauge *prometheus.GaugeVec) prometheus.Gauge {
+	return gauge.With(prometheus.Labels{
+		"audio_channels":   strconv.Itoa(m.audioChannels),
+		"audio_codec":      m.audioCodec,
+		"media_type":       m.mediaType,
+		"video_codec":      m.videoCodec,
+		"video_resolution": m.videoResolution,
+	})
 }
 
 type Collector struct {
@@ -112,34 +123,19 @@ func (c *Collector) Collect() error {
 		newMediaItemsMap[mediaItem.id] = mediaItem
 
 		if _, ok := oldMediaItemsMap[mediaItem.id]; !ok {
+			mediaItem.Gauge(mediaItemsCount).Inc()
+			mediaItem.Gauge(mediaItemsBytes).Add(float64(mediaItem.size))
 			added++
-			mediaItemsCount.With(prometheus.Labels{
-				"audio_channels":   strconv.Itoa(mediaItem.audioChannels),
-				"audio_codec":      mediaItem.audioCodec,
-				"media_type":       mediaItem.mediaType,
-				"video_codec":      mediaItem.videoCodec,
-				"video_resolution": mediaItem.videoResolution,
-			}).Inc()
 			continue
 		}
 
-		if mediaItem.Diff(oldMediaItemsMap[mediaItem.id]) {
-			mediaItemsCount.With(prometheus.Labels{
-				"audio_channels":   strconv.Itoa(oldMediaItemsMap[mediaItem.id].audioChannels),
-				"audio_codec":      oldMediaItemsMap[mediaItem.id].audioCodec,
-				"media_type":       oldMediaItemsMap[mediaItem.id].mediaType,
-				"video_codec":      oldMediaItemsMap[mediaItem.id].videoCodec,
-				"video_resolution": oldMediaItemsMap[mediaItem.id].videoResolution,
-			}).Dec()
+		oldItem := oldMediaItemsMap[mediaItem.id]
 
-			mediaItemsCount.With(prometheus.Labels{
-				"audio_channels":   strconv.Itoa(mediaItem.audioChannels),
-				"audio_codec":      mediaItem.audioCodec,
-				"media_type":       mediaItem.mediaType,
-				"video_codec":      mediaItem.videoCodec,
-				"video_resolution": mediaItem.videoResolution,
-			}).Inc()
-
+		if mediaItem.Diff(oldItem) {
+			oldItem.Gauge(mediaItemsCount).Dec()
+			mediaItem.Gauge(mediaItemsCount).Inc()
+			oldItem.Gauge(mediaItemsBytes).Sub(float64(oldItem.size))
+			mediaItem.Gauge(mediaItemsBytes).Add(float64(mediaItem.size))
 			updated++
 		}
 
@@ -152,13 +148,8 @@ func (c *Collector) Collect() error {
 			continue
 		}
 
-		mediaItemsCount.With(prometheus.Labels{
-			"audio_channels":   strconv.Itoa(mediaItem.audioChannels),
-			"audio_codec":      mediaItem.audioCodec,
-			"media_type":       mediaItem.mediaType,
-			"video_codec":      mediaItem.videoCodec,
-			"video_resolution": mediaItem.videoResolution,
-		}).Dec()
+		mediaItem.Gauge(mediaItemsCount).Dec()
+		mediaItem.Gauge(mediaItemsBytes).Sub(float64(mediaItem.size))
 
 		removed++
 	}
@@ -166,7 +157,7 @@ func (c *Collector) Collect() error {
 	c.mediaItems = newMediaItems
 	c.lastRun = newLastRun
 
-	log.Printf("Collector finished. Added %d, updated %d, and removed %d media items. Found %d media items in total.\n", added, updated, removed, len(c.mediaItems))
+	log.Printf("Collection of %d media items finished. Added %d, updated %d, and removed %d.\n", len(c.mediaItems), added, updated, removed)
 
 	return nil
 }
@@ -213,6 +204,12 @@ func (c *Collector) analyzeItem(item plex.Metadata, container plex.MediaContaine
 			continue
 		}
 
+		size := 0
+
+		for _, part := range media.Part {
+			size += part.Size
+		}
+
 		mediaItem := &MediaItem{
 			id:                   media.ID,
 			audioChannels:        media.AudioChannels,
@@ -221,14 +218,9 @@ func (c *Collector) analyzeItem(item plex.Metadata, container plex.MediaContaine
 			mediaType:            item.Type,
 			parentRatingKey:      item.ParentRatingKey,
 			sectionKey:           strconv.Itoa(container.LibrarySectionID),
+			size:                 size,
 			videoCodec:           media.VideoCodec,
 			videoResolution:      media.VideoResolution,
-		}
-
-		size := 0
-
-		for _, part := range media.Part {
-			size += part.Size
 		}
 
 		mediaItems = append(mediaItems, mediaItem)
