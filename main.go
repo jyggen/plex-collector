@@ -61,12 +61,10 @@ type Collector struct {
 	client *plex.Plex
 	lastRun time.Time
 	mediaItems []*MediaItem
-	skippedRatingKeys []string
 	skippedSectionKeys []string
 }
 
 func (c *Collector) Collect() error {
-	c.skippedRatingKeys = make([]string, 0)
 	c.skippedSectionKeys = make([]string, 0)
 
 	// Generate a new last run straight away to avoid edge cases.
@@ -154,14 +152,6 @@ func (c *Collector) Collect() error {
 			continue
 		}
 
-		if Contains(c.skippedRatingKeys, mediaItem.grandParentRatingKey) {
-			continue
-		}
-
-		if Contains(c.skippedRatingKeys, mediaItem.parentRatingKey) {
-			continue
-		}
-
 		mediaItemsTotal.With(prometheus.Labels{
 			"audio_channels":   strconv.Itoa(mediaItem.audioChannels),
 			"audio_codec":      mediaItem.audioCodec,
@@ -185,13 +175,6 @@ func (c *Collector) analyzeItems(container plex.MediaContainer) ([]*MediaItem, e
 	newMediaItems := make([]*MediaItem, 0)
 
 	for _, item := range container.Metadata {
-		updatedAt := time.Unix(int64(item.UpdatedAt), 0)
-
-		if updatedAt.Before(c.lastRun) {
-			c.skippedRatingKeys = append(c.skippedRatingKeys, item.RatingKey)
-			continue
-		}
-
 		if item.Type == "show" || item.Type == "season" {
 			content, err := c.client.GetMetadataChildren(item.RatingKey)
 
