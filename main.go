@@ -148,6 +148,7 @@ func (c *Collector) Collect() error {
 
 	for _, mediaItem := range oldMediaItemsMap {
 		if Contains(c.skippedSectionKeys, mediaItem.sectionKey) {
+			newMediaItems = append(newMediaItems, mediaItem)
 			continue
 		}
 
@@ -165,7 +166,7 @@ func (c *Collector) Collect() error {
 	c.mediaItems = newMediaItems
 	c.lastRun = newLastRun
 
-	log.Printf("Collector finished. Added %d, updated %d, and removed %d media items.\n", added, updated, removed)
+	log.Printf("Collector finished. Added %d, updated %d, and removed %d media items. Found %d media items in total.\n", added, updated, removed, len(c.mediaItems))
 
 	return nil
 }
