@@ -204,6 +204,10 @@ func (c *Collector) analyzeItem(item plex.Metadata, container plex.MediaContaine
 			continue
 		}
 
+		if media.AudioChannels == 0 && media.VideoResolution == "" {
+			continue
+		}
+
 		size := 0
 
 		for _, part := range media.Part {
