@@ -166,7 +166,9 @@ func (c *Collector) analyzeItems(container plex.MediaContainer) ([]*MediaItem, e
 	newMediaItems := make([]*MediaItem, 0)
 
 	for _, item := range container.Metadata {
-		if item.Type == "show" || item.Type == "season" {
+		if item.Type == "artist" || item.Type == "album" {
+			continue
+		} else if item.Type == "show" || item.Type == "season" {
 			content, err := c.client.GetMetadataChildren(item.RatingKey)
 
 			if err != nil {
